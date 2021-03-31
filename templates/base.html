@@ -38,12 +38,12 @@
       id="mainNav"
     >
       <div class="container">
-        {% if page == '/' %}
+        {% if app_name == 'website' %}
         <a class="navbar-brand js-scroll-trigger" href="#page-top"
           >Nestor Portfolio</a
         >
         {% else %}
-        <a class="navbar-brand js-scroll-trigger" href="/">Nestor Portfolio</a>
+        <a class="navbar-brand js-scroll-trigger" href="{% url 'website:index' %}"  >Nestor Portfolio</a>
         {% endif %}
 
         <button
@@ -60,7 +60,7 @@
         </button>
         <div class="collapse navbar-collapse" id="navbarResponsive">
           <ul class="navbar-nav ml-auto">
-            {% if page == '/' %}
+            {% if app_name == 'website' %}
             <li class="nav-item mx-0 mx-lg-1">
               <a
                 class="nav-link py-3 px-0 px-lg-3 rounded js-scroll-trigger"
@@ -82,7 +82,7 @@
                 >Contact</a
               >
             </li>
-            {% elif '/airpollution' in page %}
+            {% elif app_name == 'airpollution' %}
             <li class="nav-item mx-0 mx-lg-1">
               <a
                 class="nav-link py-3 px-0 px-lg-3 rounded js-scroll-trigger"

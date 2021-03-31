@@ -231,7 +231,7 @@
                 class="portfolio-modal-title text-secondary text-uppercase mb-0"
                 id="portfolioModal{{app.id }}Label"
               >
-                {{ app.name }}
+                {{ app.name }} 
               </h2>
               <!-- Icon Divider-->
               <div class="divider-custom">
@@ -242,7 +242,7 @@
                 <div class="divider-custom-line"></div>
               </div>
               <!-- Portfolio Modal - Image-->
-              <a href="{{app.url}}">
+              <a href="{% url 'airpollution:welcome'  %}" >
                 <img
                 class="img-fluid rounded mb-5"
                 src="{{ app.image.url }}"
