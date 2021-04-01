@@ -1,6 +1,10 @@
+from django.http import HttpResponse
+from django.db.models import Q, Sum
 from django.shortcuts import render
 from django import forms
 import openpyxl
+import colorsys
+import json
 
 from airpollution.models import Pollutant, Country, PollutantEntry
 from airpollution.helpers import get_headers_and_units, XLHEADERS
@@ -13,15 +17,56 @@ class ExcelUploadForm(forms.Form):
 # Create your views here.
 
 
-def welcome(request):
-    ctx = {
-        'app_name': request.resolver_match.app_name
-    }
-    return render(request, 'airpollution/welcome.html', ctx)
+def airpollution(request):
+    if request.method == 'GET':
+        table_data = {}
+        visuals_data = {}
+        pollutant_list = [
+            pollutant.name for pollutant in Pollutant.objects.all()]
+        country_list = [country.iso_code for country in Country.objects.all()]
 
+        for pollutant in pollutant_list:
+            table_data[pollutant] = {}
+            visuals_data[pollutant] = {'labels': [], 'data': []}
+            for country in country_list:
+                total = PollutantEntry.objects.aggregate(total=Sum('pollution_level',
+                                                                   filter=Q(pollutant__name=pollutant, country__iso_code=country)))
+                total = total['total']
+                count = PollutantEntry.objects.filter(
+                    pollutant__name=pollutant, country__iso_code=country).count()
 
-def upload_file(request):
-    if request.method == 'POST':
+                if total is not None and count:
+                    table_data[pollutant][country] = total / count
+
+                    visuals_data[pollutant]['labels'].append(country)
+                    visuals_data[pollutant]['data'].append(total/count)
+
+        # Post procees visual data
+        for pollutant_data in visuals_data.values():
+            data_count = len(pollutant_data['labels'])
+            HSV_tuples = [(i * 1.0 / data_count, 0.5, 0.5)
+                          for i in range(data_count)]
+            RGB_tuples = map(lambda x: colorsys.hsv_to_rgb(*x), HSV_tuples)
+            background_colors = []
+            border_colors = []
+
+            for rgb in RGB_tuples:
+                red, green, blue = int(rgb[0]*255), int(rgb[1]*225), int(rgb[2]*255)
+                background_colors.append(f'rgba({red}, {green}, {blue}, 0.2)')
+                border_colors.append(f'rgba({red}, {green}, {blue}, 1)')
+
+            pollutant_data['labels'] = json.dumps(pollutant_data['labels'])
+            pollutant_data['data'] = json.dumps(pollutant_data['data'])
+            pollutant_data['background'] = json.dumps(background_colors)
+            pollutant_data['border'] = json.dumps(border_colors)
+
+        ctx = {
+            'app_name': request.resolver_match.app_name, 
+            'data': table_data,
+            'visuals_data' : visuals_data
+        }
+
+    elif request.method == 'POST':
         form = ExcelUploadForm(request.POST, request.FILES)
         if form.is_valid():
             year = form.cleaned_data['year']
@@ -30,7 +75,7 @@ def upload_file(request):
             tab_names = wb.get_sheet_names()
             for tab_name in tab_names:
                 ws = wb[tab_name]
-                pollutant_name = tab_name.split('_')[0]
+                pollutant_name = tab_name.split('_')[0].strip()
                 pollutant = Pollutant.objects.get_or_create(
                     name=pollutant_name)
                 headers_row, headers, units = get_headers_and_units(ws)
@@ -79,14 +124,10 @@ def upload_file(request):
         ctx = {
             'app_name': request.resolver_match.app_name,
             'message_sucess': 'File uploaded successfully!!'
-        }                    
-        
-    else:  # Request method not on POST
-        ctx = {
-            'app_name': request.resolver_match.app_name,
-            'message_sucess': 'This view only accepts POST methods'
         }
-    
+
+    else:  # Request method not on POST
+        return HttpResponse('This view only handles GET and POST request')
     return render(request, 'airpollution/welcome.html', ctx)
 
 
@@ -144,3 +185,4 @@ def temp_country_creator(request):
     }
 
     return render(request, 'airpollution/welcome.html', ctx)
+
