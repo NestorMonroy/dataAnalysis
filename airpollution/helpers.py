@@ -59,6 +59,8 @@ def get_headers_and_units(ws):
         elif 'unit' in header:
             units = ws[column][headers_row + 1].value
             continue
+        
+        units = units if units != 'count'else 'µg/m3'
 
         #Map headers with theris indices
         for choice in XLHEADERS.choices:

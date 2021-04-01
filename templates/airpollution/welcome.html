@@ -89,24 +89,32 @@
     <!-- Table-->
     <div class="row">
       <div class="col-lg-8 mx-auto">
-        <table class="table">
-          <tr>
-            <th scope="col">Pollutant</th>
-            <th scope="col">Country</th>
-            <th scope="col">Average Pollution Level</th>
-          </tr>
-          {% for pollution_name, pollution_data in data.items %} 
-          {% for country_iso, average_pollution in pollution_data.items %}
-          <tr>
-            {% if forloop.first %}
-            <th rowspan="{{ pollution_data|length }} " scope="row">
-              {{pollution_name}}
-            </th>
-            {% endif %}
-            <td scope="row">{{country_iso}}</td>
-            <td scope="row">{{average_pollution|floatformat}}</td>
-          </tr>
-          {% endfor %} {% endfor %}
+        <table id="our-table" class="table">
+          <thead>
+            <tr>
+              <th scope="col">Pollutant</th>
+              <th scope="col">Country</th>
+              <th scope="col">Avg</th>
+              <th scope="col">Min</th>
+              <th scope="col">Max</th>
+              <th scope="col">Limit</th>
+              <th scope="col">Units</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for pollution_name, pollution_data in data.items %} 
+            {% for country_iso, data in pollution_data.items %}
+            <tr>
+              <th scope="row">{{pollution_name}}</th>
+              <td>{{country_iso}}</td>
+              <td>{{data.avg|floatformat}}</td>
+              <td>{{data.min|floatformat}}</td>
+              <td>{{data.max|floatformat}}</td>
+              <td>{{data.limit}}</td>
+              <td>{{data.units}}</td>
+            </tr>
+            {% endfor %} {% endfor %}
+          </tbody>
         </table>
       </div>
     </div>
@@ -197,6 +205,9 @@
         }
       })
     });
+
+    $('#our-table').DataTable();
+
   });
 </script>
 {% endblock %}

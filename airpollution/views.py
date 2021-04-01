@@ -1,5 +1,5 @@
 from django.http import HttpResponse
-from django.db.models import Q, Sum
+from django.db.models import Q, Sum, Max, Min
 from django.shortcuts import render
 from django import forms
 import openpyxl
@@ -21,25 +21,30 @@ def airpollution(request):
     if request.method == 'GET':
         table_data = {}
         visuals_data = {}
-        pollutant_list = [
-            pollutant.name for pollutant in Pollutant.objects.all()]
+        pollutant_list = [pollutant for pollutant in Pollutant.objects.all()]
         country_list = [country.iso_code for country in Country.objects.all()]
 
         for pollutant in pollutant_list:
-            table_data[pollutant] = {}
-            visuals_data[pollutant] = {'labels': [], 'data': []}
+            table_data[pollutant.name] = {}
+            visuals_data[pollutant.name] = {'labels': [], 'data': []}
             for country in country_list:
                 total = PollutantEntry.objects.aggregate(total=Sum('pollution_level',
-                                                                   filter=Q(pollutant__name=pollutant, country__iso_code=country)))
-                total = total['total']
-                count = PollutantEntry.objects.filter(
-                    pollutant__name=pollutant, country__iso_code=country).count()
+                                                                   filter=Q(pollutant=pollutant, country__iso_code=country)))['total']
 
+                minimun = PollutantEntry.objects.aggregate(min=Min('pollution_level',
+                                                                   filter=Q(pollutant=pollutant, country__iso_code=country)))['min']
+
+                maximun = PollutantEntry.objects.aggregate(max=Max('pollution_level',
+                                                                   filter=Q(pollutant=pollutant, country__iso_code=country)))['max']
+                count = PollutantEntry.objects.filter(pollutant=pollutant, country__iso_code=country).count()
+                units = PollutantEntry.objects.filter(pollutant=pollutant, country__iso_code=country).first()
+                units = units.units if units else ''
                 if total is not None and count:
-                    table_data[pollutant][country] = total / count
+                    table_data[pollutant.name][country] = {
+                        'avg': total / count, 'min': minimun, 'max': maximun, 'limit': pollutant.limit_value, 'units': units}
 
-                    visuals_data[pollutant]['labels'].append(country)
-                    visuals_data[pollutant]['data'].append(total/count)
+                    visuals_data[pollutant.name]['labels'].append(country)
+                    visuals_data[pollutant.name]['data'].append(total/count)
 
         # Post procees visual data
         for pollutant_data in visuals_data.values():
@@ -51,7 +56,8 @@ def airpollution(request):
             border_colors = []
 
             for rgb in RGB_tuples:
-                red, green, blue = int(rgb[0]*255), int(rgb[1]*225), int(rgb[2]*255)
+                red, green, blue = int(
+                    rgb[0]*255), int(rgb[1]*225), int(rgb[2]*255)
                 background_colors.append(f'rgba({red}, {green}, {blue}, 0.2)')
                 border_colors.append(f'rgba({red}, {green}, {blue}, 1)')
 
@@ -61,9 +67,9 @@ def airpollution(request):
             pollutant_data['border'] = json.dumps(border_colors)
 
         ctx = {
-            'app_name': request.resolver_match.app_name, 
+            'app_name': request.resolver_match.app_name,
             'data': table_data,
-            'visuals_data' : visuals_data
+            'visuals_data': visuals_data
         }
 
     elif request.method == 'POST':
@@ -78,6 +84,11 @@ def airpollution(request):
                 pollutant_name = tab_name.split('_')[0].strip()
                 pollutant = Pollutant.objects.get_or_create(
                     name=pollutant_name)
+
+                if pollutant[0].limit_value is None:
+                    limit_value = int(ws['A'][2].value.split()[-2])
+                    pollutant[0].limit_value = limit_value
+                    pollutant[0].save()
                 headers_row, headers, units = get_headers_and_units(ws)
 
                 # Save all entrties to database
@@ -185,4 +196,3 @@ def temp_country_creator(request):
     }
 
     return render(request, 'airpollution/welcome.html', ctx)
-

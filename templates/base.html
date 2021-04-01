@@ -28,6 +28,9 @@
       rel="stylesheet"
       type="text/css"
     />
+    <!-- Data-Table css-->
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/bs4/dt-1.10.24/b-1.7.0/fh-3.1.8/sp-1.2.2/datatables.min.css"/>
+
     <!-- Core theme CSS (includes Bootstrap)-->
     <link href="{% static 'css/styles.css'%}" rel="stylesheet" />
   </head>
@@ -175,7 +178,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.min.js"></script>
     <!-- Core theme JS-->
     <script src="{% static 'js/scripts.js' %}"></script>
-    
+
+    <!-- Data-Table js-->
+    <script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.24/b-1.7.0/fh-3.1.8/sp-1.2.2/datatables.min.js"></script>
     {% block js %}
       
     {% endblock  %}
