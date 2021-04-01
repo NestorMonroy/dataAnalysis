@@ -20,6 +20,7 @@ class Country(models.Model):
     """Country model for airpollution app """
     iso_code = models.CharField(max_length=3, primary_key=True)
     name = models.CharField(max_length=180, unique=True)
+    color = models.CharField(max_length=30, default='#000000')
     removed = models.BooleanField(default=False)
     longitude = models.FloatField(null=True)
     latitude = models.FloatField(null=True)
