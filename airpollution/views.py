@@ -18,10 +18,12 @@ class ExcelUploadForm(forms.Form):
 
 
 def airpollution(request):
+    ctx = {
+        'app_name': request.resolver_match.app_name,
+        'pollutant_list': [p.name for p in Pollutant.objects.all()]
+    }
     if request.method == 'GET':
-        ctx = {
-            'app_name': request.resolver_match.app_name,
-        }
+        pass
     elif request.method == 'POST':
         form = ExcelUploadForm(request.POST, request.FILES)
         if form.is_valid():
@@ -82,10 +84,7 @@ def airpollution(request):
                     PollutantEntry.objects.filter(
                         year=year, pollutant=pollutant[0]).delete()
                     PollutantEntry.objects.bulk_create(to_insert)
-        ctx = {
-            'app_name': request.resolver_match.app_name,
-            'message_sucess': 'File uploaded successfully!!'
-        }
+        ctx['message_sucess'] = 'File uploaded successfully!!'
     else:
         return HttpResponse('This view only handles GET and POST request')
     return render(request, 'airpollution/welcome.html', ctx)
@@ -161,6 +160,66 @@ def airpollution_visual_data1(request):
             else:
                 visuals_data['Pollutions Levels by Pollutant by Country']['datasets'][i +
                                                                                       1]['data'].append(-1)
+
+    return JsonResponse(visuals_data)
+
+
+def airpollution_visual_data2(request):
+    pollutant_name = request.GET.get('pollutant', 'PM10')
+    pollutant = Pollutant.objects.get(name=pollutant_name)
+    sumary_type = request.GET.get('sumary_type', 'max')
+    if sumary_type == 'avg':
+        name_prefix = 'Average'
+    elif sumary_type == 'min':
+        name_prefix = 'Mininum'
+    else:
+        name_prefix = 'Maxinum'
+    all_years = [pe['year'] for pe in PollutantEntry.objects.order_by(
+        'year').values('year').distinct()]
+    all_countries = list(Country.objects.all())
+    all_pollutions = [p.name for p in Pollutant.objects.all()]
+
+    visuals_data = {
+        'name': f'{name_prefix} pollution level by country over time',
+        'labels': all_years,
+        'datasets':  [
+            {
+                'label': 'limit',
+                'backgroundColor': '#338DD8',
+                'borderColor': '#338DD8',
+                'data': [pollutant.limit_value] * len(all_years),
+                'fill': False
+            }
+        ]
+    }
+
+    for country in all_countries:
+        country_data = {
+            'label': country.name,
+            'backgroundColor': country.color,
+            'borderColor': country.color,
+            'data': [],
+            'fill': False,
+            'hidden': True
+        }
+
+        visuals_data['datasets'].append(country_data)
+
+        for year in all_years:
+            f = Q(pollutant=pollutant, year=year, country=country)
+
+            if sumary_type == 'avg':
+                country_tot = PollutantEntry.objects.aggregate(s=Sum('pollution_level', filter=f))['s']
+                country_count = PollutantEntry.objects.filter(f).count()
+                country_data['data'].append(country_tot / country_count if country_count else 0)
+            elif sumary_type == 'min':
+                country_min = PollutantEntry.objects.aggregate(s=Min('pollution_level', filter=f))['s']
+                country_data['data'].append(country_min if country_min else 0)
+            else: # by default -> max
+                country_max = PollutantEntry.objects.aggregate(s=Min('pollution_level', filter=f))['s']
+                country_data['data'].append(country_max if country_max else 0)
+
+
 
     return JsonResponse(visuals_data)
 
